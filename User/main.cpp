@@ -12,12 +12,12 @@ void SignalHandle(int sig)
 {
     switch (sig) {
     case SIGINT:
-        pApp->postMessage(OBJ_ID_COUNTER_1, MSG_ID_PRINT);
-        pApp->postMessage(OBJ_ID_COUNTER_2, MSG_ID_PRINT);
+        PostMessage(OBJ_ID_COUNTER_1, MSG_ID_PRINT);
+        PostMessage(OBJ_ID_COUNTER_2, MSG_ID_PRINT);
         break;
     case SIGALRM:
-        pApp->postMessage(OBJ_ID_COUNTER_1, MSG_ID_TICK);
-        pApp->postMessage(OBJ_ID_COUNTER_2, MSG_ID_TICK);
+        PostMessage(OBJ_ID_COUNTER_1, MSG_ID_TICK);
+        PostMessage(OBJ_ID_COUNTER_2, MSG_ID_TICK);
         alarm(1);
         break;
     }

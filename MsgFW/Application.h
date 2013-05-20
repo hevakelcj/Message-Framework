@@ -20,11 +20,13 @@ class Application
 friend class Object;
 public:
     static Application* instance();
-    Application(int argc, char **argv);
+    Application(int argc = 0, char **argv = NULL);
 
     int exec();
     void quit(int retVal = 0);
+
     void postMessage(DWORD objId, DWORD msgId, DWORD param1 = 0, DWORD param2 = 0);
+    void sendMessage(DWORD objId, DWORD msgId, DWORD param1 = 0, DWORD param2 = 0);
 
 protected:
     bool insertObject(Object *obj);
@@ -57,5 +59,7 @@ private:
 };
 
 #define pApp    (Application::instance())
+#define PostMessage pApp->postMessage
+#define SendMessage pApp->sendMessage
 
 #endif  //__APPLICATION_H__
