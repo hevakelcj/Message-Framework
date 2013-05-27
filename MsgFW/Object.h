@@ -12,6 +12,8 @@
 #include "type.h"
 #include "Application.h"
 
+#define MSG_ID_INIT 1
+
 /**
  * Object class has a processMessage() virtual\n
  * function which is call by Application::exec().

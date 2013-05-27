@@ -15,9 +15,13 @@ HEADERS += MsgFW/Application.h \
            MsgFW/type.h \
            User/Counter.h \
            User/MsgId.h \
-           User/ObjectId.h
+           User/ObjectId.h \
+    Util/crc16.h \
+    MsgFW/Timer.h
 SOURCES += MsgFW/Application.cpp \
            MsgFW/Buffer.cpp \
            MsgFW/Object.cpp \
            User/Counter.cpp \
-           User/main.cpp
+           User/main.cpp \
+    Util/crc16.c \
+    MsgFW/Timer.cpp

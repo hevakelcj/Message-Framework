@@ -3,6 +3,7 @@
 #include "Counter.h"
 #include "MsgId.h"
 #include "ObjectId.h"
+#include "Buffer.h"
 #include <signal.h>
 #include <iostream>
 

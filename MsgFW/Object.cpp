@@ -17,6 +17,7 @@ Object::Object(DWORD id)
     : m_nId(id)
 {
     pApp->insertObject(this);
+    pApp->postMessage(id, MSG_ID_INIT);
 }
 
 /**
