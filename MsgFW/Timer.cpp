@@ -1,7 +1,6 @@
 
 #include "Timer.h"
 #include "define.h"
-#include <iterator>
 
 TimerMgr* TimerMgr::instance()
 {
@@ -14,137 +13,118 @@ TimerMgr::TimerMgr()
     , m_nIdCnt(0)
 {}
 
-HTmr TimerMgr::create(DWORD owner, DWORD period, DWORD startDelay, bool one_shot)
+HTimer TimerMgr::create(DWORD owner, DWORD period, DWORD start_delay,
+                        bool one_shot, bool immediate)
 {
-    Context *p = new Context(++m_nIdCnt, owner, period, startDelay, one_shot);
-    ASSERT(p != NULL);
-
-    m_Context[m_nIdCnt] = p;
+    ++m_nIdCnt;
+    m_Context[m_nIdCnt] = Context(m_nIdCnt, owner, period, start_delay, one_shot, immediate);
     return m_nIdCnt;
 }
 
-bool TimerMgr::start(HTmr tmr)
+bool TimerMgr::start(HTimer tmr)
 {
-    // find Context, and get pointer. if not return false
-    std::map<HTmr, Context*>::iterator iter = m_Context.find(tmr);
+    std::map<HTimer, Context>::iterator iter = m_Context.find(tmr);
     if (iter != m_Context.end()) {
-        Context *p = iter->second;
-        ASSERT(p != NULL);
+        Context *p = &iter->second;
         if (p->start_delay) {
             p->counter = p->start_delay; 
         } else {
+            if (p->immediate)
+                PostMessage(p->obj_id, MSG_ID_TIMER, p->tmr_id);
             p->counter = p->period; 
         }
-        insert_into(p);
         return true;
     }
     return false;
 }
 
-bool TimerMgr::setPeriod(DWORD tmr, DWORD period, bool now)
+bool TimerMgr::setPeriod(HTimer tmr, DWORD period, bool now)
 {
-    std::map<HTmr, Context*>::iterator iter = m_Context.find(tmr);
+     std::map<HTimer, Context>::iterator iter = m_Context.find(tmr);
     if (iter != m_Context.end()) {
-        Context *p = iter->second;
-        ASSERT(p != NULL);
+        Context *p = &iter->second;
         p->period = period;
 
-        if (now) {
-            stop(tmr);
-            start(tmr);
-        }
+        if (now)
+            p->counter = p->period;
+
+        return true;
+    }   
+    return false;
+}
+
+bool TimerMgr::reload(HTimer tmr) 
+{
+    std::map<HTimer, Context>::iterator iter = m_Context.find(tmr);
+    if (iter != m_Context.end()) {
+        Context *p = &iter->second;
+        p->counter = p->period;
+        return true;
+    } 
+    return false;
+}
+
+bool TimerMgr::stop(HTimer tmr)
+{
+    std::map<HTimer, Context>::iterator iter = m_Context.find(tmr);
+    if (iter != m_Context.end()) {
+        Context *p = &iter->second;
+        p->counter = 0; 
         return true;
     }
     return false;
 }
 
-bool TimerMgr::stop(HTmr tmr)
+bool TimerMgr::destory(HTimer tmr)
 {
-    if (m_Runlist.empty())
-        return false;
-
-    std::list<Context*>::iterator iter = m_Runlist.begin();
-    for (; iter != m_Runlist.end(); ++iter) {
-        Context *p = *iter; 
-        ASSERT(p != NULL);
-        if (p->tmr_id == tmr) {
-            std::list<Context*>::iterator nextIter = iter;
-            nextIter ++;
-            if (nextIter != m_Runlist.end()) {
-                Context *pn = *nextIter;
-                ASSERT(pn != NULL);
-                pn->counter += p->counter; 
-                m_Runlist.erase(iter);
-            }
-            return true; 
-        }
-    }
+    std::map<HTimer, Context>::iterator iter = m_Context.find(tmr);
+    if (iter != m_Context.end()) {
+        m_Context.erase(iter);
+        return true;
+    } 
     return false;
-}
-
-int TimerMgr::destory(HTmr tmr)
-{
-    stop(tmr);
-    Context *p = m_Context[tmr];
-    ASSERT(p != NULL);
-    m_Context.erase(tmr);
-    delete p;
-    return 0;
 }
 
 int TimerMgr::processMessage(DWORD msgId, DWORD param1, DWORD param2)
 {
-    param2 = param1;
-    if (msgId == MSG_ID_TICK)
-        do_tick();
+    param1 = param1;
+    param2 = param2;
+
+    if (msgId == MSG_ID_INIT) {
+        onInit(); 
+    } else if (msgId == MSG_ID_TIMER) {
+        onTick(); 
+    }
     return 0;
 }
 
-void TimerMgr::do_tick()
+void TimerMgr::onTick()
 {
-    if (m_Runlist.empty())
-        return;
+    std::map<HTimer, Context>::iterator iter = m_Context.begin();
+    for (; iter != m_Context.end(); ++iter) {
+        Context *p = &iter->second;
 
-    std::list<Context*>::iterator iter = m_Runlist.begin();
-    Context *p = *iter;
-    ASSERT(p != NULL);
-    p->counter --;
+        if (p->counter == 0)
+            continue;
 
-    for (; iter != m_Runlist.end(); ++iter) {
-        if (p->counter)
-            break; 
+        p->counter--;
+        if (p->counter != 0)
+            continue;
 
         if (p->start_delay) {
-            p->counter = p->start_delay;
+            p->counter = p->period; 
             p->start_delay = 0;
-            insert_into(p);
+            if (p->immediate)
+                PostMessage(p->obj_id, MSG_ID_TIMER, p->tmr_id);
         } else {
-            SendMessage(p->obj_id, MSG_ID_TIMER, p->tmr_id); 
-            m_Runlist.erase(iter);
-            if (!p->one_shot) {
-                p->counter = p->period; 
-                insert_into(p);
-            }
+            PostMessage(p->obj_id, MSG_ID_TIMER, p->tmr_id);
+            if (!p->one_shot)
+                p->counter = p->period;
         }
-    }
+    } 
 }
 
-void TimerMgr::insert_into(Context *ct)
+void TimerMgr::onInit()
 {
-    std::list<Context*>::iterator iter = m_Runlist.begin();
 
-    for (; iter != m_Runlist.end(); ++iter) {
-        Context *p = *iter;
-        ASSERT(p != NULL);
-        if (p->counter < ct->counter) {
-            ct->counter -= p->counter;
-        } else {
-            break; 
-        }
-    }
-    if (iter == m_Runlist.end()) {
-        m_Runlist.push_back(ct);
-    } else {
-        m_Runlist.insert(iter, ct);
-    }
 }

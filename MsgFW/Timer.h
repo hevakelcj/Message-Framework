@@ -4,14 +4,11 @@
 
 #include "Object.h"
 #include <map>
-#include <list>
 
 #define OBJ_ID_TIMER    1
+#define MSG_ID_TIMER    1
 
-#define MSG_ID_TICK     1
-#define MSG_ID_TIMER    2
-
-typedef int HTmr;
+typedef int HTimer;
 
 class TimerMgr : public Object
 {
@@ -19,42 +16,46 @@ class TimerMgr : public Object
     {
         DWORD   counter;
         ///////////////////
-        HTmr    tmr_id;
+        HTimer    tmr_id;
         DWORD   obj_id;
         DWORD   period;
         DWORD   start_delay;
         bool    one_shot;
+        bool    immediate;
 
         Context()
-            : tmr_id(-1), obj_id(-1), period(0), start_delay(0), one_shot(false)
-        {}
+            : tmr_id(0), obj_id(0), period(0), start_delay(0)
+            , one_shot(false), immediate(false) {}
 
-        Context(HTmr tid, DWORD oid, DWORD pd, DWORD sd, bool os)
-            : tmr_id(tid), obj_id(oid), period(pd), start_delay(sd), one_shot(os)
-        {}
+        Context(HTimer tid, DWORD oid, DWORD pd, DWORD sd, bool os, bool im)
+            : tmr_id(tid), obj_id(oid), period(pd), start_delay(sd)
+            , one_shot(os), immediate(im) {}
     };
 
 public:
     static TimerMgr* instance();
 
-    HTmr create(DWORD owner, DWORD period, DWORD startDelay = 0, bool oneShot = false);
-    bool start(HTmr tmr);
-    bool setPeriod(DWORD tmr, DWORD period, bool now = false);
-    bool stop(HTmr tmr);
-    int  destory(HTmr tmr);
+    HTimer create(DWORD owner, DWORD period, DWORD startDelay = 0,
+                  bool oneShot = false, bool immediate = false);
+    bool start(HTimer tmr);
+    bool setPeriod(HTimer tmr, DWORD period, bool now = false);
+    bool reload(HTimer tmr);
+    bool stop(HTimer tmr);
+    bool destory(HTimer tmr);
 
 protected:
     TimerMgr();
     virtual int processMessage(DWORD msgId, DWORD param1, DWORD param2);
 
-    void do_tick();
-    void insert_into(Context *ct);
+    void onInit();
+    void onTick();
 
 private:
-    std::map<HTmr, Context*> m_Context;
-    std::list<Context*> m_Runlist;
+    std::map<HTimer, Context> m_Context;
     int m_nIdCnt;
 };
+
+#define pTimerMgr   (TimerMgr::instance())
 
 #endif  //__TIMER_H__
 
